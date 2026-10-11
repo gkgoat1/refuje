@@ -23,3 +23,5 @@ docs/
 # Added by cargo
 
 /target
+
+anvil.log

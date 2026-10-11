@@ -28,7 +28,7 @@ impl PrivateKey {
         for (i, k) in b.chunks(32 * 8).enumerate() {
             c[i * 32..][..32].copy_from_slice(&keccak256(k).0);
         }
-        let a = keccak256(&c).0;
+        let a = keccak256(c).0;
         PubKey(a)
     }
     pub fn sign(&self, hash: [u8; 32]) -> Sig {
@@ -36,11 +36,9 @@ impl PrivateKey {
         for i in 0..512 {
             let x = hash[i >> 4] >> ((i >> 1) & 7) & 1 == (i & 1) as u8;
             let hash = if x {
-                let hash = self.at(i as u32);
-                hash
+                self.at(i as u32)
             } else {
-                let hash = keccak256(self.at(i as u32)).0;
-                hash
+                keccak256(self.at(i as u32)).0
             };
             a[i * 32..i * 32 + 32].copy_from_slice(&hash);
         }
@@ -71,8 +69,8 @@ impl Sig {
         for (i, k) in b.chunks(32 * 8).enumerate() {
             c[i * 32..][..32].copy_from_slice(&keccak256(k).0);
         }
-        let a = keccak256(&c).0;
-        return PubKey(a);
+        let a = keccak256(c).0;
+        PubKey(a)
     }
 }
 pub enum MerkleTree {
@@ -106,7 +104,7 @@ impl MerkleTree {
                         }
                     }
                 };
-                return l[if b { 1 } else { 0 }].insert(i, key);
+                l[if b { 1 } else { 0 }].insert(i, key)
             }
             None => *self = MerkleTree::PubKey(key),
         }
@@ -123,13 +121,13 @@ impl MerkleTree {
         }
         assert!(!matches!(t, MerkleTree::None));
         v.reverse();
-        return Some(v);
+        Some(v)
     }
 }
 pub fn bools_bytes<T: AsRef<[u8]>>(t: &T) -> impl Iterator<Item = bool> {
-    return (0..8 * t.as_ref().len())
+    (0..8 * t.as_ref().len())
         .rev()
-        .map(|i| (t.as_ref()[i >> 3] >> (i & 7)) & 1 != 0);
+        .map(|i| (t.as_ref()[i >> 3] >> (i & 7)) & 1 != 0)
 }
 #[derive(Default)]
 pub struct Targets(Vec<u8>, Vec<Vec<u8>>);
@@ -152,7 +150,7 @@ impl TargetsPushAddress<'_> {
         self.1 |= 0x80;
         let b = (
             contract,
-            FixedBytes([0u8 | if dispatch { 1u8 } else { 0u8 }]),
+            FixedBytes([if dispatch { 1u8 } else { 0u8 }]),
             call.abi_encode(),
         )
             .abi_encode_params();
@@ -212,12 +210,12 @@ impl Payment {
             }
         });
         tree.insert(bools_bytes(&tree_path), key.pubkey());
-        return PostPayment {
+        PostPayment {
             pay: self,
             key,
             path,
             tree_path,
-        };
+        }
     }
 }
 pub struct PostPayment<'a> {
