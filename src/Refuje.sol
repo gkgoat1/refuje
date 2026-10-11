@@ -34,7 +34,7 @@ contract Refuje {
         }
         root = keccak256(a);
         for (uint256 i = 0; i < 256; i++) {
-            bool x = uint8(path[i >> 3]) & ((1 << i) & 7) != 0;
+            bool x = uint8(path[i >> 3]) & ((1 << (i & 7))) != 0;
             if (x) {
                 root = keccak256(
                     abi.encodePacked(root, proof[(i + 512) * 32:(i + 513) * 32])
@@ -46,64 +46,141 @@ contract Refuje {
             }
         }
     }
-    function widthdrawEth(
+    function widthdrawMeta(
         bytes32 path,
         bytes calldata targets,
-        bytes calldata proof
-    ) external {
+        bytes[] calldata blobs,
+        bytes calldata proof,
+        bytes memory prefix,
+        bytes memory meta,
+        function(bytes memory, bytes32, uint256, bool) internal balances,
+        function(bytes memory, address, uint256, uint8) internal payout
+    ) internal {
         bytes32 key = widthdrawDeriveKey(
-            keccak256(abi.encodePacked("pay", targets)),
-            keccak256(abi.encodePacked("pay", path)),
+            keccak256(abi.encodePacked(prefix, meta, targets)),
+            keccak256(abi.encodePacked(prefix, meta, path)),
             proof
         );
+        uint256 j = 0;
         for (uint256 i = 0; i < targets.length; i += 64) {
             uint256 k = uint256(bytes32(targets[i:(i + 32)]));
             bool targetIsKey = false;
-            for (uint256 j = i + 52; j < 64; j++) {
+            for (uint256 j = i + 52; j < 63; j++) {
                 if (targets[j] != 0) {
                     targetIsKey = true;
                 }
             }
             if (!targetIsKey) {
+                uint8 flags = uint8(targets[i + 63]);
                 address target = address(bytes20(targets[(i + 32):(i + 52)]));
-                keyBalances[uint256(key)] -= k;
-                (bool success, ) = target.call{value: k}("");
-                require(success);
+                if (flags & 0x40 != 0) require(target == msg.sender);
+                balances(meta, key, k, true);
+                // (bool success, ) = target.call{value: k}("");
+                payout(meta, target, k, flags & 0x1);
+                if (flags & 0x80 != 0) {
+                    i += 32;
+                    require(
+                        keccak256(blobs[j]) ==
+                            bytes32(targets[(i + 32):(i + 64)])
+                    );
+                    j += 1;
+                    (address contract_, bytes1 flags, bytes memory data) = abi
+                        .decode(blobs[j - 1], (address, bytes1, bytes));
+                    (bool success, bytes memory result) = contract_.call(data);
+                    require(success);
+                    if (uint8(flags) & 1 != 0) {
+                        (success, ) = address(this).delegatecall(
+                            abi.decode(result, (bytes))
+                        );
+                        require(success);
+                    }
+                }
             } else {
-                keyBalances[uint256(key)] -= k;
-                keyBalances[uint256(bytes32(targets[(i + 32):(i + 64)]))] += k;
+                balances(meta, key, k, true);
+                balances(meta, bytes32(targets[(i + 32):(i + 64)]), k, false);
             }
         }
+    }
+    function ethBalances(
+        bytes memory meta,
+        bytes32 key,
+        uint256 amount,
+        bool charge
+    ) internal {
+        if (charge) {
+            keyBalances[uint256(key)] -= amount;
+        } else {
+            keyBalances[uint256(key)] += amount;
+        }
+    }
+    function ethPayout(
+        bytes memory meta,
+        address target,
+        uint256 amount,
+        uint8 flags
+    ) internal {
+        (bool success, ) = target.call{value: amount}("");
+        require(success);
+    }
+    function ercBalances(
+        bytes memory meta,
+        bytes32 key,
+        uint256 amount,
+        bool charge
+    ) internal {
+        IERC20 token = IERC20(address(bytes20(meta)));
+        if (charge) {
+            keyErc20Balances[address(token)][uint256(key)] -= amount;
+        } else {
+            keyErc20Balances[address(token)][uint256(key)] += amount;
+        }
+    }
+    function ercPayout(
+        bytes memory meta,
+        address target,
+        uint256 amount,
+        uint8 flags
+    ) internal {
+        IERC20 token = IERC20(address(bytes20(meta)));
+        if (flags & 1 == 0) {
+            token.transfer(target, amount);
+        } else {
+            token.approve(target, amount);
+        }
+    }
+    function widthdrawEth(
+        bytes32 path,
+        bytes calldata targets,
+        bytes[] calldata blobs,
+        bytes calldata proof
+    ) external {
+        widthdrawMeta(
+            path,
+            targets,
+            blobs,
+            proof,
+            "pay",
+            "",
+            ethBalances,
+            ethPayout
+        );
     }
     function widthdrawErc20(
         IERC20 token,
         bytes32 path,
         bytes calldata targets,
+        bytes[] calldata blobs,
         bytes calldata proof
     ) external {
-        bytes32 key = widthdrawDeriveKey(
-            keccak256(abi.encodePacked("pay20", address(token), targets)),
-            keccak256(abi.encodePacked("pay20", address(token), path)),
-            proof
+        widthdrawMeta(
+            path,
+            targets,
+            blobs,
+            proof,
+            "pay20",
+            abi.encodePacked(address(token)),
+            ercBalances,
+            ercPayout
         );
-        for (uint256 i = 0; i < targets.length; i += 64) {
-            uint256 k = uint256(bytes32(targets[i:(i + 32)]));
-            bool targetIsKey = false;
-            for (uint256 j = i + 52; j < 64; j++) {
-                if (targets[j] != 0) {
-                    targetIsKey = true;
-                }
-            }
-            if (!targetIsKey) {
-                address target = address(bytes20(targets[(i + 32):(i + 52)]));
-                keyErc20Balances[address(token)][uint256(key)] -= k;
-                token.transfer(target, k);
-            } else {
-                keyErc20Balances[address(token)][uint256(key)] -= k;
-                keyErc20Balances[address(token)][
-                    uint256(bytes32(targets[(i + 32):(i + 64)]))
-                ] += k;
-            }
-        }
     }
 }

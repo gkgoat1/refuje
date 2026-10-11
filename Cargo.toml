@@ -1,0 +1,8 @@
+[package]
+name = "refuje"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alloy = { version = "2.5.0", features = ["full"] }
+serde = { version = "1.0.229", features = ["derive"] }
