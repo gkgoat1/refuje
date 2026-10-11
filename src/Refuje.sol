@@ -12,7 +12,7 @@ contract Refuje {
         uint256 value,
         address src
     ) external {
-        token.transferFrom(src, address(this), value);
+        require(token.transferFrom(src, address(this), value));
         keyErc20Balances[address(token)][key] += value;
     }
     function widthdrawDeriveKey(
@@ -22,7 +22,7 @@ contract Refuje {
     ) internal returns (bytes32 root) {
         bytes memory a = new bytes(32 * 512);
         for (uint256 i = 0; i < 512; i++) {
-            bool x = (uint8(hash[i >> 4]) & ((1 << (i >> 1)) & 7) != 0) ==
+            bool x = (uint8(hash[i >> 4]) & ((1 << ((i >> 1) & 7))) != 0) ==
                 (i & 1 != 0);
             if (x) {
                 bytes32 hash = keccak256(proof[(i * 32):(i * 32) + 32]);
@@ -64,6 +64,10 @@ contract Refuje {
         uint256 j = 0;
         for (uint256 i = 0; i < targets.length; i += 64) {
             uint256 k = uint256(bytes32(targets[i:(i + 32)]));
+            uint256 fee = k >> 7;
+            balances(meta, key, fee, true);
+            payout(meta, msg.sender, fee, 0);
+            k -= fee;
             bool targetIsKey = false;
             for (uint256 j = i + 52; j < 63; j++) {
                 if (targets[j] != 0) {
@@ -108,6 +112,7 @@ contract Refuje {
         bool charge
     ) internal {
         if (charge) {
+            require(keyBalances[uint256(key)] >= amount);
             keyBalances[uint256(key)] -= amount;
         } else {
             keyBalances[uint256(key)] += amount;
@@ -130,6 +135,7 @@ contract Refuje {
     ) internal {
         IERC20 token = IERC20(address(bytes20(meta)));
         if (charge) {
+            require(keyErc20Balances[address(token)][uint256(key)] > amount);
             keyErc20Balances[address(token)][uint256(key)] -= amount;
         } else {
             keyErc20Balances[address(token)][uint256(key)] += amount;
@@ -143,9 +149,9 @@ contract Refuje {
     ) internal {
         IERC20 token = IERC20(address(bytes20(meta)));
         if (flags & 1 == 0) {
-            token.transfer(target, amount);
+            require(token.transfer(target, amount));
         } else {
-            token.approve(target, amount);
+            require(token.approve(target, amount));
         }
     }
     function widthdrawEth(

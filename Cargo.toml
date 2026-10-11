@@ -5,4 +5,6 @@ edition = "2024"
 
 [dependencies]
 alloy = { version = "2.5.0", features = ["full"] }
+rand = "0.10.3"
 serde = { version = "1.0.229", features = ["derive"] }
+tokio = { version = "1.53.2", features = ["full"] }

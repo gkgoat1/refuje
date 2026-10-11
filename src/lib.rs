@@ -26,7 +26,7 @@ impl PrivateKey {
     pub fn sign(&self, hash: [u8; 32]) -> Sig {
         let mut a = [[0u8; 32]; 512];
         for i in 0..512 {
-            let x = (hash[i >> 4] & ((1 << (i >> 1)) & 7) != 0) == (i & 1 != 0);
+            let x = (hash[i >> 4] & (1 << ((i >> 1) & 7)) != 0) == (i & 1 != 0);
             if !x {
                 let hash = keccak256(keccak256(
                     (FixedBytes(self.0), i as u32).abi_encode_packed(),
@@ -100,6 +100,7 @@ pub fn bools_bytes<T: AsRef<[u8]>>(t: &T) -> impl Iterator<Item = bool> {
         .cloned()
         .flat_map(|v| (0..8).rev().map(move |i| v & (1 << (i & 7)) != 0));
 }
+#[derive(Default)]
 pub struct Targets(Vec<u8>, Vec<Vec<u8>>);
 pub struct TargetsPushAddress<'a>(&'a mut Targets, u8, Vec<u8>);
 impl Drop for TargetsPushAddress<'_> {
@@ -226,3 +227,5 @@ impl PostPayment<'_> {
         }
     }
 }
+#[cfg(test)]
+pub mod tests;
