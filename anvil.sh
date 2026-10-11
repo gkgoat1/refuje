@@ -1,1 +1,1 @@
-anvil --auto-impersonate --fork-url https://ethereum.reth.rs/rpc
+anvil --port 8545 --auto-impersonate

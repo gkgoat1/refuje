@@ -1,6 +1,5 @@
 pragma solidity ^0.8.37;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "forge-std/safeconsole.sol";
 contract Refuje {
     mapping(uint256 => uint256) keyBalances;
     mapping(address => mapping(uint256 => uint256)) keyErc20Balances;
@@ -10,11 +9,9 @@ contract Refuje {
     function registerPubKey(bytes32 key) external {
         uint256 nullifier = uint256(key);
         pubKeys[uint248(nullifier >> 8)] |= 1 << (nullifier & 255);
-        safeconsole.log(nullifier);
     }
     function depositToKey(uint256 key) external payable {
         keyBalances[key] += msg.value;
-        safeconsole.log(key);
     }
     function depositErc20(
         IERC20 token,
@@ -34,16 +31,9 @@ contract Refuje {
         for (uint256 i = 0; i < 512; i++) {
             bool x = (uint8(hash[(i >> 4) & 31]) >> ((i >> 1) & 7)) & 1 ==
                 uint8(i & 1);
-            // safeconsole.log(x);
-
             bytes memory data = new bytes(32);
             for (uint256 j = 0; j < 32; j++) data[j] = proof[i * 32 + j];
             if (x) {
-                safeconsole.log(
-                    uint256(bytes32(data)),
-                    "->",
-                    uint256(keccak256(data))
-                );
                 data = abi.encodePacked(keccak256(data));
             }
             for (uint256 j = 0; j < 32; j++) a[i * 32 + j] = data[j];
@@ -64,9 +54,7 @@ contract Refuje {
         }
 
         bytes32 root = keccak256(c);
-        // for (uint256 i = 0; i < 32; i++) safeconsole.log(uint8(root[i]));
         uint256 nullifier = uint256(root);
-        safeconsole.log(nullifier);
         require(
             nullifiers[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) == 0,
             "nullified"
@@ -78,18 +66,16 @@ contract Refuje {
         nullifiers[uint248(nullifier >> 8)] |= 1 << (nullifier & 255);
         for (uint256 i = 0; i < 256; i++) {
             bool x = (uint8(path[i >> 3]) >> (i & 7)) & 1 != 0;
-            safeconsole.log(uint256(root), " ", x);
             if (x) {
-                root = keccak256(
-                    abi.encodePacked(root, bytes32(proof[(i + 512) * 32:]))
-                );
-            } else {
                 root = keccak256(
                     abi.encodePacked(bytes32(proof[(i + 512) * 32:]), root)
                 );
+            } else {
+                root = keccak256(
+                    abi.encodePacked(root, bytes32(proof[(i + 512) * 32:]))
+                );
             }
         }
-        safeconsole.log(uint256(root));
         return root;
     }
     function widthdrawMeta(
@@ -104,8 +90,6 @@ contract Refuje {
     ) internal {
         bytes32 thash = keccak256(abi.encode(prefix, meta, targets));
         bytes32 tpath = keccak256(abi.encode(prefix, meta, path));
-        for (uint256 i = 0; i < 32; i++) safeconsole.log(uint8(tpath[i]));
-        safeconsole.log(uint256(tpath));
         bytes32 key = widthdrawDeriveKey(thash, tpath, proof);
         uint256 j = 0;
         for (uint256 i = 0; i < targets.length; i += 64) {
@@ -113,7 +97,6 @@ contract Refuje {
             uint256 fee = k >> 7;
             balances(meta, key, fee, true);
             payout(meta, msg.sender, fee, 0);
-            k -= fee;
             bool targetIsKey = false;
             for (uint256 j2 = i + 52; j2 < 63; j2++) {
                 if (targets[j2] != 0) {
@@ -160,11 +143,9 @@ contract Refuje {
         bool charge
     ) internal {
         if (charge) {
-            require(
-                keyBalances[uint256(key)] >= amount,
-                NeedBalance(amount - keyBalances[uint256(key)])
-            );
-            keyBalances[uint256(key)] -= amount;
+            uint256 balance = keyBalances[uint256(key)];
+            if (balance < amount) revert NeedBalance(amount - balance);
+            keyBalances[uint256(key)] = balance - amount;
         } else {
             keyBalances[uint256(key)] += amount;
         }
@@ -186,13 +167,9 @@ contract Refuje {
     ) internal {
         IERC20 token = IERC20(address(bytes20(meta)));
         if (charge) {
-            require(
-                keyErc20Balances[address(token)][uint256(key)] >= amount,
-                NeedBalance(
-                    amount - keyErc20Balances[address(token)][uint256(key)]
-                )
-            );
-            keyErc20Balances[address(token)][uint256(key)] -= amount;
+            uint256 balance = keyErc20Balances[address(token)][uint256(key)];
+            if (balance < amount) revert NeedBalance(amount - balance);
+            keyErc20Balances[address(token)][uint256(key)] = balance - amount;
         } else {
             keyErc20Balances[address(token)][uint256(key)] += amount;
         }

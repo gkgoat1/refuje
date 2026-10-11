@@ -1,7 +1,5 @@
-use std::array;
-
 use alloy::{
-    primitives::{Address, Bytes, FixedBytes, U8, U256, keccak256},
+    primitives::{Address, Bytes, FixedBytes, U256, keccak256},
     sol_types::{SolCall, SolValue},
 };
 
@@ -54,14 +52,8 @@ impl Sig {
         let mut a = [0u8; 32 * 512];
         for i in 0..512 {
             let x = hash[(i >> 4) & 31] >> ((i >> 1) & 7) & 1 == (i & 1) as u8;
-            // eprintln!("{:?}",x);
             if x {
                 let hash = keccak256(&self.0[i * 32..i * 32 + 32]).0;
-                eprintln!(
-                    "{} -> {}",
-                    U256::from_be_slice(&self.0[i * 32..i * 32 + 32]),
-                    U256::from_be_bytes(hash)
-                );
                 for j in 0..32 {
                     a[i * 32 + j] = hash[j]
                 }
@@ -71,7 +63,6 @@ impl Sig {
                 }
             }
         }
-        eprintln!("{:?}", a);
         let mut b = [0u8; 32 * 64];
         for (i, k) in a.chunks(32 * 8).enumerate() {
             b[i * 32..][..32].copy_from_slice(&keccak256(k).0);
@@ -81,7 +72,6 @@ impl Sig {
             c[i * 32..][..32].copy_from_slice(&keccak256(k).0);
         }
         let a = keccak256(&c).0;
-        eprintln!("{:?} {}", a, U256::from_be_bytes(a));
         return PubKey(a);
     }
 }
@@ -121,7 +111,7 @@ impl MerkleTree {
             None => *self = MerkleTree::PubKey(key),
         }
     }
-    pub fn prove(&self, mut i: impl Iterator<Item = bool>) -> Option<Vec<[u8; 32]>> {
+    pub fn prove(&self, i: impl Iterator<Item = bool>) -> Option<Vec<[u8; 32]>> {
         let mut v = Vec::new();
         let mut t = self;
         for b in i {
@@ -129,7 +119,6 @@ impl MerkleTree {
                 return None;
             };
             t = &*a[if b { 1 } else { 0 }];
-            eprintln!("{} {b}", U256::from_be_bytes(t.hash()));
             v.push(a[if b { 0 } else { 1 }].hash());
         }
         assert!(!matches!(t, MerkleTree::None));
@@ -166,7 +155,7 @@ impl TargetsPushAddress<'_> {
             FixedBytes([0u8 | if dispatch { 1u8 } else { 0u8 }]),
             call.abi_encode(),
         )
-            .abi_encode();
+            .abi_encode_params();
         self.2.extend(keccak256(&b));
         self.0.1.push(b);
     }
@@ -183,8 +172,8 @@ impl Targets {
                 .chain(addr.iter().cloned())
                 .chain([0u8; 11]),
         );
-        let mut bs = Vec::new();
-        let mut flags = 0x0;
+        let bs = Vec::new();
+        let flags = 0x0;
         TargetsPushAddress(self, flags, bs)
     }
     pub fn push_key(&mut self, amount: U256, addr: [u8; 32]) {
@@ -193,13 +182,15 @@ impl Targets {
     }
     fn pay(&self, payment: &Payment) -> Vec<u8> {
         match payment {
-            Payment::Eth => ("pay", "", Bytes::from_iter(self.0.iter().cloned())).abi_encode(),
+            Payment::Eth => {
+                ("pay", "", Bytes::from_iter(self.0.iter().cloned())).abi_encode_params()
+            }
             Payment::Erc20(address) => (
                 "pay20",
                 Bytes::from(address.to_vec()),
                 Bytes::from_iter(self.0.iter().cloned()),
             )
-                .abi_encode(),
+                .abi_encode_params(),
         }
     }
 }
@@ -214,18 +205,18 @@ impl Payment {
         path: [u8; 32],
         tree: &mut MerkleTree,
     ) -> PostPayment<'a> {
-        let FixedBytes(path) = keccak256(match self {
-            Payment::Eth => ("pay", "", FixedBytes(path)).abi_encode(),
+        let FixedBytes(tree_path) = keccak256(match self {
+            Payment::Eth => ("pay", "", FixedBytes(path)).abi_encode_params(),
             Payment::Erc20(address) => {
-                ("pay20", Bytes::from(address.to_vec()), FixedBytes(path)).abi_encode()
+                ("pay20", Bytes::from(address.to_vec()), FixedBytes(path)).abi_encode_params()
             }
         });
-        eprintln!("{:?} {}", path, U256::from_be_bytes(path));
-        tree.insert(bools_bytes(&path), key.pubkey());
+        tree.insert(bools_bytes(&tree_path), key.pubkey());
         return PostPayment {
             pay: self,
             key,
             path,
+            tree_path,
         };
     }
 }
@@ -233,6 +224,7 @@ pub struct PostPayment<'a> {
     pay: &'a Payment,
     key: PrivateKey,
     path: [u8; 32],
+    tree_path: [u8; 32],
 }
 pub enum PaymentCall {
     Eth(widthdrawEthCall),
@@ -240,18 +232,19 @@ pub enum PaymentCall {
 }
 impl PostPayment<'_> {
     pub fn finalize(self, targets: Targets, tree: &MerkleTree) -> PaymentCall {
-        let PostPayment { pay, key, path } = self;
-        // eprintln!("{:?}", U256::from_be_bytes(key.pubkey().0));
+        let PostPayment {
+            pay,
+            key,
+            path,
+            tree_path,
+        } = self;
         let hash = keccak256(targets.pay(pay)).0;
         let x = key.sign(hash);
-        x.recover(hash);
-        // eprintln!("{:?}", U256::from_be_bytes(x.recover(hash).0));
-        // eprintln!("{:?}", x);
         let proof: alloy::primitives::Bytes =
             x.0.iter()
                 .cloned()
                 .chain(
-                    tree.prove(bools_bytes(&path))
+                    tree.prove(bools_bytes(&tree_path))
                         .unwrap()
                         .into_iter()
                         .flatten(),
