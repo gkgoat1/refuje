@@ -180,6 +180,7 @@ export class Targets {
     return [...this.#blobs];
   }
   push_key(amount: bigint, key: Uint8Array) {
+    if (key.length !== 32) throw new RangeError("key must be 32 bytes");
     this.#array = new Uint8Array([
       ...this.#array,
       ...uint256ToUint8Array(amount),
@@ -234,7 +235,6 @@ export interface Finalizer {
 function makeFinzlizer(
   pay: payment,
   key: Privatekey,
-  path: Uint8Array,
   treePath: string,
   call: (
     c: Contract,
@@ -254,6 +254,7 @@ function makeFinzlizer(
 }
 export class payEth implements payment {
   pay(key: Privatekey, path: Uint8Array, tree: MerkleTree) {
+    if (path.length !== 32) throw new RangeError("path must be 32 bytes");
     const treePath = keccak256(
       new Uint8Array([
         ...new TextEncoder().encode("pay"),
@@ -265,7 +266,7 @@ export class payEth implements payment {
       bools_bytes(getBytes(treePath)),
       key.pubkey(),
     );
-    return makeFinzlizer(this, key, path, treePath, (c, targets, proof) =>
+    return makeFinzlizer(this, key, treePath, (c, targets, proof) =>
       c.widthdrawEth.populateTransaction(path, targets.array, targets.blobs, proof),
     );
   }
@@ -286,6 +287,7 @@ export class payAddress implements payment {
     this.#addr = addr;
   }
   pay(key: Privatekey, path: Uint8Array, tree: MerkleTree) {
+    if (path.length !== 32) throw new RangeError("path must be 32 bytes");
     const treePath = keccak256(
       new Uint8Array([
         ...new TextEncoder().encode("pay20"),
@@ -297,7 +299,7 @@ export class payAddress implements payment {
       bools_bytes(getBytes(treePath)),
       key.pubkey(),
     );
-    return makeFinzlizer(this, key, path, treePath, (c, targets, proof) =>
+    return makeFinzlizer(this, key, treePath, (c, targets, proof) =>
       c.widthdrawErc20.populateTransaction(this.#addr, path, targets.array, targets.blobs, proof),
     );
   }

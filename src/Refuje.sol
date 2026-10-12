@@ -99,7 +99,7 @@ contract Refuje {
             payout(meta, msg.sender, fee, 0);
             k -= fee;
             bool targetIsKey = false;
-            for (uint256 j2 = i + 52; j2 < 63; j2++) {
+            for (uint256 j2 = i + 52; j2 < i + 63; j2++) {
                 if (targets[j2] != 0) {
                     targetIsKey = true;
                 }

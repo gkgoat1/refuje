@@ -1,8 +1,12 @@
 use alloy::{
     primitives::{Address, Bytes, FixedBytes, U256, keccak256},
     providers::{Provider, ProviderBuilder, ext::AnvilApi},
-    sol_types::SolValue,
+    sol_types::{SolCall, SolValue},
 };
+
+alloy::sol! {
+    function setValue(uint256 value);
+}
 use rand::random;
 
 use crate::{
@@ -42,6 +46,74 @@ fn abi_preimages_match_solidity_argument_encoding() {
         root = keccak256((FixedBytes(left), FixedBytes(right)).abi_encode_packed()).0;
     }
     assert_eq!(root, tree.hash());
+}
+
+#[test]
+fn targets_encode_keys_flags_and_call_blobs() {
+    let token = Address(FixedBytes([0x11; 20]));
+    let call_target = Address(FixedBytes([0x22; 20]));
+    let key = [0xab; 32];
+    let mut targets = Targets::default();
+    targets.push_key(U256::from(0x1234), key);
+    {
+        let mut target = targets.push_address(U256::from(0x5678), call_target);
+        target.approve();
+        target.require_sender();
+        target.call(call_target, setValueCall { value: U256::from(42) });
+        target.call(call_target, setValueCall { value: U256::from(7) });
+    }
+
+    let call = (
+        call_target,
+        FixedBytes([0u8]),
+        setValueCall { value: U256::from(42) }.abi_encode(),
+    )
+        .abi_encode_params();
+    assert_eq!(targets.0.len(), 160);
+    assert_eq!(&targets.0[..32], &U256::from(0x1234).to_be_bytes::<32>());
+    assert_eq!(&targets.0[32..64], &key);
+    assert_eq!(targets.0[127], 0xc1);
+    assert_eq!(targets.0[128..], keccak256(&call));
+    assert_eq!(targets.1, vec![call]);
+
+    assert_eq!(
+        targets.pay(&Payment::Erc20(token)),
+        (
+            "pay20",
+            Bytes::from(token.to_vec()),
+            Bytes::from(targets.0.clone()),
+        )
+            .abi_encode_packed()
+    );
+}
+
+#[test]
+fn merkle_tree_proves_multiple_hashed_paths() {
+    let first = PrivateKey([1; 32]);
+    let second = PrivateKey([2; 32]);
+    let first_path = [0x17; 32];
+    let second_path = [0x29; 32];
+    let mut tree = MerkleTree::None;
+    let first_payment = Payment::Eth.pay(first, first_path, &mut tree);
+    let second_payment = Payment::Eth.pay(second, second_path, &mut tree);
+
+    for (key, path) in [
+        (first_payment.key.pubkey(), first_payment.tree_path),
+        (second_payment.key.pubkey(), second_payment.tree_path),
+    ] {
+        let proof = tree.prove(bools_bytes(&path)).unwrap();
+        let mut root = key.0;
+        for (i, sibling) in proof.into_iter().enumerate() {
+            let path_bit = (path[i >> 3] >> (i & 7)) & 1 != 0;
+            let (left, right) = if path_bit {
+                (sibling, root)
+            } else {
+                (root, sibling)
+            };
+            root = keccak256((FixedBytes(left), FixedBytes(right)).abi_encode_packed()).0;
+        }
+        assert_eq!(root, tree.hash());
+    }
 }
 
 #[tokio::main]

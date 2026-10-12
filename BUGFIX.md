@@ -24,7 +24,7 @@ cargo test -- --nocapture
 
 Result: **3 passed, 0 failed**.
 
-# TypeScript client parity
+## TypeScript client parity
 
 The TypeScript client had three Rust-parity bugs exposed by its mirrored tests:
 
@@ -33,3 +33,18 @@ The TypeScript client had three Rust-parity bugs exposed by its mirrored tests:
 3. Bigint target amounts were parsed with an inverted `slice` bound and were emitted at variable width. The parser now reads each byte correctly, and target amounts are zero-padded to the 32-byte Solidity `uint256` representation.
 
 The TypeScript tests cover signature recovery, ABI/Merkle parity, and an end-to-end ETH withdrawal against Anvil.
+
+## Full contract/client feature coverage
+
+The expanded Rust and TypeScript suites cover padded address and key targets, multiple Merkle leaves and nonzero paths, sender restrictions, replay protection, ETH key-to-key transfers, ERC-20 deposits and transfer/approval payouts, call blobs, fee accounting, and underfunded withdrawals. The suites use `MockERC20` and `CallTarget` fixtures for the external-token and callback paths.
+
+The contract had an indexing bug in key-target detection: its padding scan used the absolute bound `j2 < 63`, so every key target after the first target was decoded as an address. The scan now uses the current record's bound (`j2 < i + 63`), allowing multiple key transfers in one withdrawal. The TypeScript client also rejects target keys that are not 32 bytes and paths that cannot be encoded as `bytes32`, preventing malformed target records and transactions.
+
+The test command serializes the Node tests and polls Anvil receipts directly because large proof transactions can be mined before ethers' confirmation waiter observes the receipt:
+
+```sh
+cargo test -- --nocapture
+npm test
+```
+
+Result: **5 Rust tests and 10 TypeScript tests passed, 0 failed**.
