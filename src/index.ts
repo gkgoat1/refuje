@@ -206,14 +206,13 @@ export class Targets {
         bytes[0] |= 0x40;
       },
       call(
-        contract: string,
         call: ContractTransaction,
       ) {
         if (bytes[0] & 0x80) return;
         bytes[0] |= 0x80;
         const b = AbiCoder.defaultAbiCoder().encode(
           ["address", "bytes1", "bytes"],
-          [contract, new Uint8Array([0]), call.data],
+          [call.to, new Uint8Array([0]), call.data],
         );
         self.#blobs.push(getBytes(b));
         bytes = [...bytes, ...getBytes(keccak256(b))];
