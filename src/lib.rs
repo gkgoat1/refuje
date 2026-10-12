@@ -143,14 +143,14 @@ impl TargetsPushAddress<'_> {
     pub fn approve(&mut self) {
         self.1 |= 0x1;
     }
-    pub fn call(&mut self, contract: Address, call: impl SolCall, dispatch: bool) {
+    pub fn call(&mut self, contract: Address, call: impl SolCall) {
         if self.1 & 0x80 != 0 {
             return;
         }
         self.1 |= 0x80;
         let b = (
             contract,
-            FixedBytes([if dispatch { 1u8 } else { 0u8 }]),
+            FixedBytes([0u8]),
             call.abi_encode(),
         )
             .abi_encode_params();

@@ -123,12 +123,6 @@ contract Refuje {
                         .decode(blobs[j - 1], (address, bytes1, bytes));
                     (bool success, bytes memory result) = contract_.call(data);
                     require(success, "worked");
-                    if (uint8(flags2) & 1 != 0) {
-                        (success, ) = address(this).delegatecall(
-                            abi.decode(result, (bytes))
-                        );
-                        require(success, "ret call");
-                    }
                 }
             } else {
                 balances(meta, key, k, true);
