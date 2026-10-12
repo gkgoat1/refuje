@@ -1,7 +1,5 @@
-import { ContractTransaction } from "ethers";
-import { Contract } from "ethers";
-import { AbiCoder } from "ethers";
-import { keccak256 } from "ethers";
+import type { Contract, ContractTransaction } from "ethers";
+import { AbiCoder, getBytes, keccak256 } from "ethers";
 export class Privatekey {
   readonly #array: Uint8Array;
   constructor({ array }: { array: Uint8Array }) {
@@ -11,43 +9,43 @@ export class Privatekey {
     return this.#array;
   }
   #at(i: number): Uint8Array {
-    return Uint8Array.fromHex(
+    return getBytes(
       keccak256(
         AbiCoder.defaultAbiCoder().encode(
           ["bytes32", "uint32"],
           [this.#array, i],
         ),
-      ).slice(2),
+      ),
     );
   }
   pubkey() {
     const a = new Uint8Array(32 * 512);
     for (let i = 0; i < 512; i++) {
-      const hash = this.#at(i);
+      const hash = getBytes(keccak256(this.#at(i)));
       for (let j = 0; j < 32; j++) a[i * 32 + j] = hash[j];
     }
     const b = new Uint8Array(32 * 64);
     for (let i = 0; i < 64; i++) {
-      const hash: Uint8Array = Uint8Array.fromHex(
-        keccak256(a.slice(i * 32 * 8, (i + 1) * 32 * 8)).slice(2),
+      const hash: Uint8Array = getBytes(
+        keccak256(a.slice(i * 32 * 8, (i + 1) * 32 * 8)),
       );
       for (let j = 0; j < 32; j++) b[i * 32 + j] = hash[j];
     }
     const c = new Uint8Array(32 * 8);
     for (let i = 0; i < 8; i++) {
-      const hash: Uint8Array = Uint8Array.fromHex(
-        keccak256(b.slice(i * 32 * 8, (i + 1) * 32 * 8)).slice(2),
+      const hash: Uint8Array = getBytes(
+        keccak256(b.slice(i * 32 * 8, (i + 1) * 32 * 8)),
       );
       for (let j = 0; j < 32; j++) c[i * 32 + j] = hash[j];
     }
-    return new Publickey({ array: Uint8Array.fromHex(keccak256(c).slice(2)) });
+    return new Publickey({ array: getBytes(keccak256(c)) });
   }
   sign(hash: Uint8Array) {
     let a = new Uint8Array(32 * 512);
     for (let i = 0; i < 512; i++) {
       const x = ((hash[i >> 4] >> ((i >> 1) & 7)) & 1) == (i & 1);
       let b = this.#at(i);
-      if (!x) b = Uint8Array.fromHex(keccak256(b).slice(2));
+      if (!x) b = getBytes(keccak256(b));
       for (let j = 0; j < 32; j++) a[i * 32 + j] = b[j];
     }
     return new Sig({ array: a });
@@ -75,24 +73,24 @@ export class Sig {
     for (let i = 0; i < 512; i++) {
       const x = ((hash[i >> 4] >> ((i >> 1) & 7)) & 1) == (i & 1);
       let b = this.#array.slice(i * 32, i * 32 + 32);
-      if (x) b = Uint8Array.fromHex(keccak256(b).slice(2));
+      if (x) b = new Uint8Array(getBytes(keccak256(b)));
       for (let j = 0; j < 32; j++) a[i * 32 + j] = b[j];
     }
     const b = new Uint8Array(32 * 64);
     for (let i = 0; i < 64; i++) {
-      const hash: Uint8Array = Uint8Array.fromHex(
-        keccak256(a.slice(i * 32 * 8, (i + 1) * 32 * 8)).slice(2),
+      const hash: Uint8Array = getBytes(
+        keccak256(a.slice(i * 32 * 8, (i + 1) * 32 * 8)),
       );
       for (let j = 0; j < 32; j++) b[i * 32 + j] = hash[j];
     }
     const c = new Uint8Array(32 * 8);
     for (let i = 0; i < 8; i++) {
-      const hash: Uint8Array = Uint8Array.fromHex(
-        keccak256(b.slice(i * 32 * 8, (i + 1) * 32 * 8)).slice(2),
+      const hash: Uint8Array = getBytes(
+        keccak256(b.slice(i * 32 * 8, (i + 1) * 32 * 8)),
       );
       for (let j = 0; j < 32; j++) c[i * 32 + j] = hash[j];
     }
-    return new Publickey({ array: Uint8Array.fromHex(keccak256(c).slice(2)) });
+    return new Publickey({ array: getBytes(keccak256(c)) });
   }
 }
 export class MerkleTree {
@@ -121,7 +119,7 @@ export class MerkleTree {
         c[i] = b[i - 32];
       }
     }
-    return Uint8Array.fromHex(keccak256(c).slice(2));
+    return getBytes(keccak256(c));
   }
   insert(i: boolean[], key: Publickey) {
     let x: MerkleTree = this;
@@ -156,13 +154,20 @@ export function bools_bytes(a: Uint8Array): boolean[] {
   return b;
 }
 export function bigintToUint8Array(value: bigint): Uint8Array {
+  if (value < 0n) throw new RangeError("value must be non-negative");
   const hex = value.toString(16);
-  const len = Math.ceil(hex.length / 2);
+  const len = Math.max(1, Math.ceil(hex.length / 2));
   const u8 = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
-    u8[i] = parseInt(hex.slice(i * 2, 2), 16);
+    u8[i] = parseInt(hex.slice(i * 2, (i + 1) * 2), 16);
   }
   return u8;
+}
+
+function uint256ToUint8Array(value: bigint): Uint8Array {
+  const bytes = bigintToUint8Array(value);
+  if (bytes.length > 32) throw new RangeError("value does not fit in uint256");
+  return new Uint8Array([...new Uint8Array(32 - bytes.length), ...bytes]);
 }
 
 export class Targets {
@@ -177,15 +182,15 @@ export class Targets {
   push_key(amount: bigint, key: Uint8Array) {
     this.#array = new Uint8Array([
       ...this.#array,
-      ...bigintToUint8Array(amount),
+      ...uint256ToUint8Array(amount),
       ...key,
     ]);
   }
   pushAddress(amount: bigint, addr: string) {
     this.#array = new Uint8Array([
       ...this.#array,
-      ...bigintToUint8Array(amount),
-      ...Uint8Array.fromHex(addr.slice(2)),
+      ...uint256ToUint8Array(amount),
+      ...getBytes(addr),
       ...Array.from({ length: 11 }, () => 0),
     ]);
     const self = this;
@@ -211,8 +216,8 @@ export class Targets {
           ["address", "bytes1", "bytes"],
           [contract, new Uint8Array([dispatch ? 0x1 : 0]), call.data],
         );
-        self.#blobs.push(Uint8Array.fromHex(b.slice(2)));
-        bytes = [...bytes, ...Uint8Array.fromHex(keccak256(b).slice(2))];
+        self.#blobs.push(getBytes(b));
+        bytes = [...bytes, ...getBytes(keccak256(b))];
       },
     };
   }
@@ -242,8 +247,8 @@ function makeFinzlizer(
   return {
     finalize(c, targets, tree) {
       let hash = keccak256(pay.encodeTargets(targets));
-      let x = key.sign(Uint8Array.fromHex(hash.slice(2)));
-      let p = tree.prove(bools_bytes(Uint8Array.fromHex(treePath.slice(2))));
+      let x = key.sign(getBytes(hash));
+      let p = tree.prove(bools_bytes(getBytes(treePath)));
       let x2 = new Uint8Array([...x.array, ...p.flatMap((a) => [...a])]);
       return call(c, targets, x2);
     },
@@ -259,7 +264,7 @@ export class payEth implements payment {
       ]),
     );
     tree.insert(
-      bools_bytes(Uint8Array.fromHex(treePath.slice(2))),
+      bools_bytes(getBytes(treePath)),
       key.pubkey(),
     );
     return makeFinzlizer(this, key, path, treePath, (c, targets, proof) =>
@@ -286,12 +291,12 @@ export class payAddress implements payment {
     const treePath = keccak256(
       new Uint8Array([
         ...new TextEncoder().encode("pay20"),
-        ...Uint8Array.fromHex(this.#addr.slice(2)),
+        ...getBytes(this.#addr),
         ...path,
       ]),
     );
     tree.insert(
-      bools_bytes(Uint8Array.fromHex(treePath.slice(2))),
+      bools_bytes(getBytes(treePath)),
       key.pubkey(),
     );
     return makeFinzlizer(this, key, path, treePath, (c, targets, proof) =>
@@ -301,7 +306,7 @@ export class payAddress implements payment {
   encodeTargets(targets: Targets): Uint8Array {
     return new Uint8Array([
       ...new TextEncoder().encode("pay20"),
-      ...Uint8Array.fromHex(this.#addr.slice(2)),
+      ...getBytes(this.#addr),
       ...targets.array,
     ]);
   }

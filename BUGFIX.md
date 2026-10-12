@@ -23,3 +23,13 @@ cargo test -- --nocapture
 ```
 
 Result: **3 passed, 0 failed**.
+
+# TypeScript client parity
+
+The TypeScript client had three Rust-parity bugs exposed by its mirrored tests:
+
+1. `Contract` and `ContractTransaction` were imported as runtime values, but `ContractTransaction` is type-only in ethers. The imports now use a type import so `src/index.ts` can load.
+2. `Privatekey.pubkey()` omitted the per-leaf Keccak hash used by the Rust implementation and the Solidity verifier. It now hashes each derived leaf before building the public key.
+3. Bigint target amounts were parsed with an inverted `slice` bound and were emitted at variable width. The parser now reads each byte correctly, and target amounts are zero-padded to the 32-byte Solidity `uint256` representation.
+
+The TypeScript tests cover signature recovery, ABI/Merkle parity, and an end-to-end ETH withdrawal against Anvil.

@@ -1,6 +1,9 @@
 {
   "name": "@gkgo/refuje",
   "type": "module",
+  "scripts": {
+    "test": "forge build && node --experimental-strip-types --test test/index.test.ts"
+  },
   "dependencies": {
     "ethers": "^6.17.0"
   }
