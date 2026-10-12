@@ -21,11 +21,11 @@ fn abi_preimages_match_solidity_argument_encoding() {
     let targets = Targets::default();
     assert_eq!(
         targets.pay(&Payment::Eth),
-        ("pay", "", Bytes::default()).abi_encode_params()
+        ("pay", "", Bytes::default()).abi_encode_packed()
     );
 
     let path = [0u8; 32];
-    let hashed_path = keccak256(("pay", "", FixedBytes(path)).abi_encode_params()).0;
+    let hashed_path = keccak256(("pay", "", FixedBytes(path)).abi_encode_packed()).0;
     let mut tree = MerkleTree::None;
     let post = Payment::Eth.pay(PrivateKey([1; 32]), path, &mut tree);
     assert_eq!(post.path, path);

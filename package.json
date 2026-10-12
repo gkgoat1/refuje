@@ -1,0 +1,7 @@
+{
+  "name": "@gkgo/refuje",
+  "type": "module",
+  "dependencies": {
+    "ethers": "^6.17.0"
+  }
+}

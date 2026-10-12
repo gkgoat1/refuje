@@ -12,7 +12,7 @@ pub struct PubKey(pub [u8; 32]);
 pub struct Sig(pub [u8; 32 * 512]);
 impl PrivateKey {
     fn at(&self, i: u32) -> [u8; 32] {
-        keccak256((FixedBytes(self.0), FixedBytes(i.to_be_bytes())).abi_encode_packed()).0
+        keccak256((FixedBytes(self.0), i).abi_encode()).0
     }
     pub fn pubkey(&self) -> PubKey {
         let mut a = [0u8; 32 * 512];
@@ -181,14 +181,14 @@ impl Targets {
     fn pay(&self, payment: &Payment) -> Vec<u8> {
         match payment {
             Payment::Eth => {
-                ("pay", "", Bytes::from_iter(self.0.iter().cloned())).abi_encode_params()
+                ("pay", "", Bytes::from_iter(self.0.iter().cloned())).abi_encode_packed()
             }
             Payment::Erc20(address) => (
                 "pay20",
                 Bytes::from(address.to_vec()),
                 Bytes::from_iter(self.0.iter().cloned()),
             )
-                .abi_encode_params(),
+                .abi_encode_packed(),
         }
     }
 }
@@ -204,9 +204,9 @@ impl Payment {
         tree: &mut MerkleTree,
     ) -> PostPayment<'a> {
         let FixedBytes(tree_path) = keccak256(match self {
-            Payment::Eth => ("pay", "", FixedBytes(path)).abi_encode_params(),
+            Payment::Eth => ("pay", "", FixedBytes(path)).abi_encode_packed(),
             Payment::Erc20(address) => {
-                ("pay20", Bytes::from(address.to_vec()), FixedBytes(path)).abi_encode_params()
+                ("pay20", Bytes::from(address.to_vec()), FixedBytes(path)).abi_encode_packed()
             }
         });
         tree.insert(bools_bytes(&tree_path), key.pubkey());

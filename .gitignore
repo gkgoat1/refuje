@@ -25,3 +25,5 @@ docs/
 /target
 
 anvil.log
+
+/node_modules

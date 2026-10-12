@@ -88,8 +88,8 @@ contract Refuje {
         function(bytes memory, bytes32, uint256, bool) internal balances,
         function(bytes memory, address, uint256, uint8) internal payout
     ) internal {
-        bytes32 thash = keccak256(abi.encode(prefix, meta, targets));
-        bytes32 tpath = keccak256(abi.encode(prefix, meta, path));
+        bytes32 thash = keccak256(abi.encodePacked(prefix, meta, targets));
+        bytes32 tpath = keccak256(abi.encodePacked(prefix, meta, path));
         bytes32 key = widthdrawDeriveKey(thash, tpath, proof);
         uint256 j = 0;
         for (uint256 i = 0; i < targets.length; i += 64) {
