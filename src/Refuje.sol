@@ -97,6 +97,7 @@ contract Refuje {
             uint256 fee = k >> 7;
             balances(meta, key, fee, true);
             payout(meta, msg.sender, fee, 0);
+            k -= fee;
             bool targetIsKey = false;
             for (uint256 j2 = i + 52; j2 < 63; j2++) {
                 if (targets[j2] != 0) {

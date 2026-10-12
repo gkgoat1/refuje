@@ -63,7 +63,7 @@ async fn withdraws_eth_to_target() {
     let key = PrivateKey(random());
     let mut m = MerkleTree::None;
     let mut targets = Targets::default();
-    targets.push_address(U256::from(10u64.pow(9) - (10u64.pow(9) >> 7)), address2);
+    targets.push_address(U256::from(10u64.pow(9)), address2);
     let p2 = Payment::Eth
         .pay(PrivateKey(key.0), [0u8; 32], &mut m)
         .finalize(targets, &m);

@@ -90,7 +90,7 @@ test("withdraws ETH to a target", { timeout: 30_000 }, async () => {
   const targets = new Targets();
   const amount = 1_000_000_000n;
   const payout = amount - (amount >> 7n);
-  const targetScope = targets.pushAddress(payout, target);
+  const targetScope = targets.pushAddress(amount, target);
   targetScope[Symbol.dispose]();
 
   await (await contract.registerPubKey(key.pubkey().array)).wait();
