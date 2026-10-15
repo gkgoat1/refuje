@@ -1,4 +1,6 @@
 import { consentRequest, parsePluginPackage } from "./package.ts";
+import { normalizePlan, type RecipePlan } from "./plan.ts";
+import { evaluatePolicy, PolicyViolationError, type PolicyConfig, type PolicyResult } from "./policy.ts";
 import { MemoryPluginStore } from "./store.ts";
 import type {
   PluginId,
@@ -9,7 +11,6 @@ import type {
   RecipePluginPackage,
   RecipeClientOptions,
   StoredPlugin,
-  WorkerErrorMessage,
   WorkerLike,
   WorkerResponse,
 } from "./types.ts";
@@ -115,6 +116,14 @@ export class RecipeClient {
     active.state = { ...active.state, status: "loaded" };
     this.states.set(pluginId, active.state);
     return { pluginId, version: active.state.version, output };
+  }
+
+  async plan(pluginId: PluginId, input: unknown, policy?: PolicyConfig): Promise<{ plan: RecipePlan; policy: PolicyResult }> {
+    const result = await this.run(pluginId, input);
+    const plan = normalizePlan(result.output);
+    const policyResult = policy ? evaluatePolicy(plan, policy) : { allowed: true, issues: [] };
+    if (!policyResult.allowed) throw new PolicyViolationError(policyResult);
+    return { plan, policy: policyResult };
   }
 
   async unload(pluginId: PluginId): Promise<void> {

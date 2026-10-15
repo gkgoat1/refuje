@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RecipeClient, parsePluginPackage } from "../src/recipes/index.ts";
+import { evaluatePolicy, normalizePlan, PolicyViolationError, RecipeClient, parsePluginPackage, serializePlan } from "../src/recipes/index.ts";
 import { ClientPluginStore, MemoryFileStorage, createMemoryKeyValueStorage } from "../src/recipes/store.ts";
 import type { RecipePluginPackage, WorkerLike, WorkerRequest } from "../src/recipes/types.ts";
 
@@ -79,6 +79,43 @@ test("headless client installs, loads, runs, and unloads a plugin", async () => 
   await client.unload(plugin.manifest.id);
   assert.equal(client.status(plugin.manifest.id)?.status, "unloaded");
   assert.equal(workers[0].terminated, true);
+});
+
+const plan = {
+  schemaVersion: 1,
+  pluginId: "echo.recipe",
+  pluginVersion: "1.0.0",
+  recipeId: "echo",
+  calls: [{ chainId: 1, target: "0x0000000000000000000000000000000000000001", calldata: "0x12345678", value: "0" }],
+  approvals: [],
+  flows: [{ direction: "input", asset: { kind: "native", chainId: 1 }, amount: "7" }],
+  constraints: { deadline: 2_000_000_000, slippageBps: 50 },
+  metadata: { z: 1, a: "stable" },
+};
+
+test("normalizes and serializes a deterministic plan", () => {
+  const normalized = normalizePlan(plan, 1_000_000_000);
+  assert.equal(serializePlan(normalized).indexOf('"a":"stable"') < serializePlan(normalized).indexOf('"z":1'), true);
+  assert.deepEqual(evaluatePolicy(normalized, { chains: [{ chainId: 1, targets: { "0x0000000000000000000000000000000000000001": { selectors: ["0x12345678"] } } }] }), { allowed: true, issues: [] });
+});
+
+test("policy rejects an undeclared selector", () => {
+  const normalized = normalizePlan(plan, 1_000_000_000);
+  const result = evaluatePolicy(normalized, { chains: [{ chainId: 1, targets: { "0x0000000000000000000000000000000000000001": { selectors: ["0xdeadbeef"] } } }] });
+  assert.equal(result.allowed, false);
+  assert.equal(result.issues[0]?.code, "SELECTOR_NOT_ALLOWED");
+});
+
+test("headless plan rejects policy violations", async () => {
+  const client = new RecipeClient({
+    workerFactory: { create: () => new FakeWorker() },
+    requestTimeoutMs: 500,
+  });
+  await client.install(plugin, { lifetime: "temporary", consent: async () => true });
+  await assert.rejects(
+    client.plan(plugin.manifest.id, plan, { chains: [{ chainId: 1, targets: {} }] }),
+    (error: unknown) => error instanceof PolicyViolationError && error.result.allowed === false,
+  );
 });
 
 test("installation requires explicit consent", async () => {
