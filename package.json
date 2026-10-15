@@ -6,11 +6,13 @@
     "test:forge": "forge test",
     "test:halmos": "uvx --from halmos halmos --function testSymbolic --contract RefujeSymbolicTest",
     "test:mutants": "bash test/mutants/run.sh",
+    "test:recipes": "node --experimental-strip-types --test test/recipes.test.ts",
     "dev:web": "forge build && node scripts/generate-web-artifact.mjs && vite --config web/vite.config.ts",
     "build:web": "forge build && node scripts/generate-web-artifact.mjs && tsc --noEmit -p web/tsconfig.json && vite build --config web/vite.config.ts",
     "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
+    "es-module-lexer": "^3.0.4",
     "ethers": "^6.17.0"
   },
   "devDependencies": {
