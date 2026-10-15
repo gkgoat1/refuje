@@ -9,6 +9,8 @@ import {
   RecipeClient,
   RecipeOrchestrator,
   RefujeRecipeApi,
+  RefujeRailgunIntegration,
+  RailgunRecipeApi,
   parsePluginPackage,
   serializePlan,
 } from "../src/recipes/index.ts";
@@ -204,6 +206,40 @@ test("bridge failure becomes recoverable client state", async () => {
   const failed = await orchestrator.observeBridge(created.id, { type: "failed", bridgeId: "bridge-swap-fail", reason: "destination rejected" });
   assert.equal(failed.status, "recoverable");
   assert.equal(failed.recoveryReason, "destination rejected");
+});
+
+test("RailgunRecipeApi shields and unshields with UTXO accounting", () => {
+  const api = new RailgunRecipeApi();
+  const utxo = { noteId: "note-1", token: "0x0000000000000000000000000000000000000002", amount: "10", chainId: 1 };
+  const shielded = api.shield({ chainId: 1, token: utxo.token, amount: "10", from: "0x0000000000000000000000000000000000000003", railgunAddress: "0x0000000000000000000000000000000000000004", utxo });
+  assert.equal(shielded.recipeId, "railgun.shield");
+  assert.equal(shielded.metadata?.system, "railgun");
+  assert.equal(shielded.flows.length, 2);
+  const unshielded = api.unshield({ chainId: 1, token: utxo.token, amount: "10", to: "0x0000000000000000000000000000000000000003", railgunAddress: "0x0000000000000000000000000000000000000004", utxo });
+  assert.equal(unshielded.recipeId, "railgun.unshield");
+  assert.throws(() => api.shield({ chainId: 1, token: utxo.token, amount: "10", from: "0x0000000000000000000000000000000000000003", railgunAddress: "0x0000000000000000000000000000000000000004", utxo: { ...utxo, amount: "not-a-number" } }), /amount must be a decimal integer/);
+});
+
+test("key-to-shielded and shielded-to-key integrations record both systems", () => {
+  const integration = new RefujeRailgunIntegration();
+  const refuje = {
+    chainId: 1,
+    refujeAddress: "0x0000000000000000000000000000000000000001",
+    path: `0x${"11".repeat(32)}`,
+    targets: "0x12345678",
+    blobs: [] as string[],
+    proof: "0x1234",
+    asset: { kind: "native" as const },
+    flows: [{ direction: "input" as const, asset: { kind: "native" as const, chainId: 1 }, amount: "10" }],
+  };
+  const shield = { chainId: 1, token: "0x0000000000000000000000000000000000000002", amount: "10", from: "0x0000000000000000000000000000000000000003", railgunAddress: "0x0000000000000000000000000000000000000004", utxo: { noteId: "note-1", token: "0x0000000000000000000000000000000000000002", amount: "10", chainId: 1 } };
+  const unshield = { chainId: 1, token: shield.token, amount: "10", to: "0x0000000000000000000000000000000000000003", railgunAddress: shield.railgunAddress, utxo: shield.utxo };
+  const keyToShield = integration.keyToShielded({ refuje, railgun: shield, integrationId: "int-1" });
+  assert.deepEqual(keyToShield.metadata?.systems, ["refuje", "railgun"]);
+  assert.equal(keyToShield.calls.length, 2);
+  const shieldToKey = integration.shieldedToKey({ railgun: unshield, refuje, integrationId: "int-2" });
+  assert.deepEqual(shieldToKey.metadata?.systems, ["railgun", "refuje"]);
+  assert.equal(shieldToKey.calls.length, 2);
 });
 
 test("installation requires explicit consent", async () => {

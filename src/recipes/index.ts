@@ -6,6 +6,10 @@ export { RefujeRecipeApi } from "./refuje.ts";
 export type { RefujeDirectRecipeInput, RefujeWithdrawalInput } from "./refuje.ts";
 export { RecipeOrchestrator } from "./orchestrator.ts";
 export { MockRelayClient } from "./relay.ts";
+export { RailgunRecipeApi } from "./railgun.ts";
+export { RefujeRailgunIntegration } from "./integration.ts";
+export type { RailgunRecipeInput, RailgunShieldInput, RailgunUnshieldInput, RailgunUtxo } from "./railgun.ts";
+export type { KeyToShieldedInput, ShieldedToKeyInput } from "./integration.ts";
 export { MemoryExecutionStore } from "./execution.ts";
 export type {
   BridgeAdapter,
