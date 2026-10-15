@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluatePolicy, normalizePlan, PolicyViolationError, RecipeClient, RefujeRecipeApi, parsePluginPackage, serializePlan } from "../src/recipes/index.ts";
+import {
+  evaluatePolicy,
+  MemoryExecutionStore,
+  MockRelayClient,
+  normalizePlan,
+  PolicyViolationError,
+  RecipeClient,
+  RecipeOrchestrator,
+  RefujeRecipeApi,
+  parsePluginPackage,
+  serializePlan,
+} from "../src/recipes/index.ts";
+import type { BridgeAdapter } from "../src/recipes/index.ts";
 import { ClientPluginStore, MemoryFileStorage, createMemoryKeyValueStorage } from "../src/recipes/store.ts";
 import type { RecipePluginPackage, WorkerLike, WorkerRequest } from "../src/recipes/types.ts";
 
@@ -149,6 +161,49 @@ test("RefujeRecipeApi rejects malformed proof material", () => {
     asset: { kind: "native" },
     flows: [],
   }), /path must be bytes32/);
+});
+
+test("cross-chain orchestration reaches settled and rejects replay", async () => {
+  const relay = new MockRelayClient(() => 123);
+  const bridge: BridgeAdapter = {
+    begin(execution) {
+      return { bridgeId: `bridge-${execution.id}`, sourceChainId: 1, destinationChainId: 10, amount: "7", recipient: "0x0000000000000000000000000000000000000003", expiresAt: 200 };
+    },
+    observe(execution) {
+      return execution;
+    },
+  };
+  const orchestrator = new RecipeOrchestrator({ store: new MemoryExecutionStore(), relay, bridge });
+  const created = await orchestrator.start({ id: "swap-1", idempotencyKey: "key-1", plan: normalizePlan(plan, 1_000_000_000) });
+  await orchestrator.submitSource(created.id);
+  relay.setStatus("relay-1", { state: "confirmed", confirmedAt: 124 });
+  await orchestrator.observeRelay(created.id);
+  await orchestrator.beginBridge(created.id);
+  await orchestrator.observeBridge(created.id, { type: "destination-ready", bridgeId: "bridge-swap-1", at: 125 });
+  await orchestrator.submitDestination(created.id);
+  const settled = await orchestrator.settle(created.id);
+  assert.equal(settled.status, "settled");
+  assert.equal(settled.history.at(-1), "destination settled");
+
+  const spent = await orchestrator.start({ id: "swap-2", idempotencyKey: "key-2", plan: normalizePlan(plan, 1_000_000_000), spentAuthorization: "auth-1" });
+  await assert.rejects(orchestrator.submitSource(spent.id), /already spent/);
+});
+
+test("bridge failure becomes recoverable client state", async () => {
+  const relay = new MockRelayClient(() => 321);
+  const bridge: BridgeAdapter = {
+    begin: (execution) => ({ bridgeId: `bridge-${execution.id}`, sourceChainId: 1, destinationChainId: 10, amount: "7", recipient: "0x0000000000000000000000000000000000000003", expiresAt: 400 }),
+    observe: (execution) => execution,
+  };
+  const orchestrator = new RecipeOrchestrator({ store: new MemoryExecutionStore(), relay, bridge });
+  const created = await orchestrator.start({ id: "swap-fail", idempotencyKey: "key-fail", plan: normalizePlan(plan, 1_000_000_000) });
+  await orchestrator.submitSource(created.id);
+  relay.setStatus("relay-1", { state: "confirmed", confirmedAt: 322 });
+  await orchestrator.observeRelay(created.id);
+  await orchestrator.beginBridge(created.id);
+  const failed = await orchestrator.observeBridge(created.id, { type: "failed", bridgeId: "bridge-swap-fail", reason: "destination rejected" });
+  assert.equal(failed.status, "recoverable");
+  assert.equal(failed.recoveryReason, "destination rejected");
 });
 
 test("installation requires explicit consent", async () => {

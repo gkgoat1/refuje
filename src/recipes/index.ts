@@ -4,6 +4,21 @@ export { normalizePlan, PlanValidationError, serializePlan, validatePlan } from 
 export { evaluatePolicy, PolicyViolationError } from "./policy.ts";
 export { RefujeRecipeApi } from "./refuje.ts";
 export type { RefujeDirectRecipeInput, RefujeWithdrawalInput } from "./refuje.ts";
+export { RecipeOrchestrator } from "./orchestrator.ts";
+export { MockRelayClient } from "./relay.ts";
+export { MemoryExecutionStore } from "./execution.ts";
+export type {
+  BridgeAdapter,
+  BridgeEvent,
+  BridgeIntent,
+  ExecutionStatus,
+  ExecutionStore,
+  RecipeExecution,
+  RelayClient,
+  RelayStatus,
+  RelaySubmission,
+  RelayTransaction,
+} from "./execution.ts";
 export type { CallPolicy, ChainPolicy, PolicyConfig, PolicyIssue, PolicyResult } from "./policy.ts";
 export type { RecipeApproval, RecipeAsset, RecipeAssetFlow, RecipeCall, RecipeConstraints, RecipePlan } from "./plan.ts";
 export {
