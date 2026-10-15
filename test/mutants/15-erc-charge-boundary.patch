@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -173,7 +173,7 @@
+         IERC20 token = IERC20(address(bytes20(meta)));
+         if (charge) {
+             uint256 balance = keyErc20Balances[address(token)][uint256(key)];
+-            if (balance < amount) revert NeedBalance(amount - balance);
++            if (balance <= amount) revert NeedBalance(amount - balance);
+             keyErc20Balances[address(token)][uint256(key)] = balance - amount;
+         } else {
+             keyErc20Balances[address(token)][uint256(key)] += amount;

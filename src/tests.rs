@@ -59,14 +59,27 @@ fn targets_encode_keys_flags_and_call_blobs() {
         let mut target = targets.push_address(U256::from(0x5678), call_target);
         target.approve();
         target.require_sender();
-        target.call(call_target, setValueCall { value: U256::from(42) });
-        target.call(call_target, setValueCall { value: U256::from(7) });
+        target.call(
+            call_target,
+            setValueCall {
+                value: U256::from(42),
+            },
+        );
+        target.call(
+            call_target,
+            setValueCall {
+                value: U256::from(7),
+            },
+        );
     }
 
     let call = (
         call_target,
         FixedBytes([0u8]),
-        setValueCall { value: U256::from(42) }.abi_encode(),
+        setValueCall {
+            value: U256::from(42),
+        }
+        .abi_encode(),
     )
         .abi_encode_params();
     assert_eq!(targets.0.len(), 160);

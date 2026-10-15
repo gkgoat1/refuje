@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -29,7 +29,7 @@
+     ) internal returns (bytes32) {
+         bytes memory a = new bytes(32 * 512);
+         for (uint256 i = 0; i < 512; i++) {
+-            bool x = (uint8(hash[(i >> 4) & 31]) >> ((i >> 1) & 7)) & 1 ==
++            bool x = (uint8(hash[(i >> 4) & 31]) >> ((i >> 1) & 7)) & 1 !=
+                 uint8(i & 1);
+             bytes memory data = new bytes(32);
+             for (uint256 j = 0; j < 32; j++) data[j] = proof[i * 32 + j];

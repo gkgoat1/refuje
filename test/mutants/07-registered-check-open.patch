@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -60,7 +60,7 @@
+             "nullified"
+         );
+         require(
+-            pubKeys[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) != 0,
++            pubKeys[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) >= 0,
+             "not registered"
+         );
+         nullifiers[uint248(nullifier >> 8)] |= 1 << (nullifier & 255);

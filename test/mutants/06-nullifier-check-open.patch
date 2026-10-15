@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -56,7 +56,7 @@
+         bytes32 root = keccak256(c);
+         uint256 nullifier = uint256(root);
+         require(
+-            nullifiers[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) == 0,
++            nullifiers[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) >= 0,
+             "nullified"
+         );
+         require(

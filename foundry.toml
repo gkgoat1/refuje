@@ -7,4 +7,13 @@ optimizer_runs = 1000000
 via_ir = true
 bytecode_hash = "none"
 
+[invariant]
+# Each handler call is a full signed withdrawal (~25M gas), so keep the
+# campaign modest; raise locally for deeper runs.
+runs = 64
+depth = 32
+# The handler guards every call it makes; a revert means the contract (or the
+# handler's model of it) broke, so fail loudly instead of discarding the call.
+fail_on_revert = true
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

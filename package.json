@@ -2,9 +2,19 @@
   "name": "@gkgo/refuje",
   "type": "module",
   "scripts": {
-    "test": "forge build && node --experimental-strip-types --test-concurrency=1 --test test/index.test.ts"
+    "test": "forge build && node --experimental-strip-types --test-concurrency=1 --test test/index.test.ts",
+    "test:forge": "forge test",
+    "test:halmos": "uvx --from halmos halmos --function testSymbolic --contract RefujeSymbolicTest",
+    "test:mutants": "bash test/mutants/run.sh",
+    "dev:web": "forge build && node scripts/generate-web-artifact.mjs && vite --config web/vite.config.ts",
+    "build:web": "forge build && node scripts/generate-web-artifact.mjs && tsc --noEmit -p web/tsconfig.json && vite build --config web/vite.config.ts",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "ethers": "^6.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
   }
 }

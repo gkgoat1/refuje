@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -121,7 +121,7 @@
+                     require(target == msg.sender, "sender check");
+                 balances(meta, key, k, true);
+                 // (bool success, ) = target.call{value: k}("");
+-                payout(meta, target, k, flags & 0x1);
++                payout(meta, target, k, flags & 0x2);
+                 if (flags & 0x80 != 0) {
+                     i += 32;
+                     require(

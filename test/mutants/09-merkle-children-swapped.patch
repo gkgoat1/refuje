@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -68,7 +68,7 @@
+             bool x = (uint8(path[i >> 3]) >> (i & 7)) & 1 != 0;
+             if (x) {
+                 root = keccak256(
+-                    abi.encodePacked(bytes32(proof[(i + 512) * 32:]), root)
++                    abi.encodePacked(root, bytes32(proof[(i + 512) * 32:]))
+                 );
+             } else {
+                 root = keccak256(

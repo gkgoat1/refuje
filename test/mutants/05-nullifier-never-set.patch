@@ -1,0 +1,10 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -63,7 +63,6 @@
+             pubKeys[uint248(nullifier >> 8)] & (1 << (nullifier & 255)) != 0,
+             "not registered"
+         );
+-        nullifiers[uint248(nullifier >> 8)] |= 1 << (nullifier & 255);
+         for (uint256 i = 0; i < 256; i++) {
+             bool x = (uint8(path[i >> 3]) >> (i & 7)) & 1 != 0;
+             if (x) {

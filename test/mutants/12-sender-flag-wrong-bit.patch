@@ -1,0 +1,11 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -117,7 +117,7 @@
+             if (!targetIsKey) {
+                 uint8 flags = uint8(targets[i + 63]);
+                 address target = address(bytes20(targets[(i + 32):(i + 52)]));
+-                if (flags & 0x40 != 0)
++                if (flags & 0x04 != 0)
+                     require(target == msg.sender, "sender check");
+                 balances(meta, key, k, true);
+                 // (bool success, ) = target.call{value: k}("");

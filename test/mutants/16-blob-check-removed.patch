@@ -1,0 +1,12 @@
+--- a/src/Refuje.sol
++++ b/src/Refuje.sol
+@@ -125,8 +125,7 @@
+                 if (flags & 0x80 != 0) {
+                     i += 32;
+                     require(
+-                        keccak256(blobs[j]) ==
+-                            bytes32(targets[(i + 32):(i + 64)]),
++                        true,
+                         "blob check"
+                     );
+                     j += 1;

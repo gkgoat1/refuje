@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Refuje payment contract console" />
+    <title>Refuje Console</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">REFUJE</p>
+        <h1>Payment contract console</h1>
+        <p class="lede">Connect a wallet, point at any Refuje deployment, and inspect or submit transactions.</p>
+      </div>
+      <div class="wallet-area">
+        <label for="wallet-select">Wallet</label>
+        <select id="wallet-select">
+          <option value="">Discovering wallets…</option>
+        </select>
+        <button id="connect-wallet" type="button">Connect</button>
+        <output id="account-output" class="muted">Not connected</output>
+      </div>
+    </header>
+
+    <main>
+      <section class="card instance-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">INSTANCE</p>
+            <h2>Choose a deployment</h2>
+          </div>
+          <button id="refresh-instance" class="secondary" type="button">Refresh</button>
+        </div>
+        <div class="grid two">
+          <label>
+            Contract address
+            <input id="instance-address" type="text" spellcheck="false" placeholder="0x…" />
+          </label>
+          <label>
+            Read RPC URL <span class="muted">(optional when connected)</span>
+            <input id="rpc-url" type="url" spellcheck="false" placeholder="https://…" />
+          </label>
+        </div>
+        <div id="instance-status" class="status" role="status">Enter an address, then refresh.</div>
+      </section>
+
+      <section class="card deploy-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">DEPLOY</p>
+            <h2>Deploy a new Refuje instance</h2>
+          </div>
+          <span class="pill">Wallet broadcast</span>
+        </div>
+        <p class="muted">Deploy the compiled Refuje bytecode from the connected account. There are no constructor arguments. The new address will become the active instance.</p>
+        <button id="deploy-refuje" type="button">Deploy Refuje instance</button>
+      </section>
+
+      <section class="grid two panels">
+        <article class="card">
+          <p class="eyebrow">ETH</p>
+          <h2>Register and fund a key</h2>
+          <p class="muted">The key is the 32-byte balance key used by the deployment.</p>
+          <form id="eth-deposit-form">
+            <label>
+              Key (bytes32 or uint256)
+              <input id="eth-key" required type="text" spellcheck="false" placeholder="0x…" />
+            </label>
+            <label>
+              Amount (ETH)
+              <input id="eth-amount" required type="text" inputmode="decimal" placeholder="0.01" />
+            </label>
+            <div class="actions">
+              <button type="button" id="register-key">Register public key</button>
+              <button type="submit">Deposit ETH</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="card">
+          <p class="eyebrow">ERC-20</p>
+          <h2>Approve and fund a key</h2>
+          <p class="muted">Enter token decimals explicitly; this works with any ERC-20 instance.</p>
+          <form id="erc20-deposit-form">
+            <div class="grid two compact">
+              <label>
+                Token address
+                <input id="token-address" required type="text" spellcheck="false" placeholder="0x…" />
+              </label>
+              <label>
+                Decimals
+                <input id="token-decimals" required type="number" min="0" max="255" value="18" />
+              </label>
+            </div>
+            <label>
+              Key (bytes32 or uint256)
+              <input id="erc20-key" required type="text" spellcheck="false" placeholder="0x…" />
+            </label>
+            <div class="grid two compact">
+              <label>
+                Amount (tokens)
+                <input id="erc20-amount" required type="text" inputmode="decimal" placeholder="1.0" />
+              </label>
+              <label>
+                Source address
+                <input id="erc20-source" required type="text" spellcheck="false" placeholder="Connected account" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" id="approve-token">Approve contract</button>
+              <button type="submit">Deposit ERC-20</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">WITHDRAW</p>
+            <h2>Submit a pre-built withdrawal</h2>
+          </div>
+          <span class="pill">Raw proof mode</span>
+        </div>
+        <p class="muted">Proofs are generated by the Refuje client/library. This UI never asks for a private key; paste the finalized calldata pieces below.</p>
+        <form id="withdraw-form">
+          <div class="grid two compact">
+            <label>
+              Asset
+              <select id="withdraw-asset">
+                <option value="eth">ETH</option>
+                <option value="erc20">ERC-20</option>
+              </select>
+            </label>
+            <label id="withdraw-token-wrap" class="hidden">
+              Token address
+              <input id="withdraw-token" type="text" spellcheck="false" placeholder="0x…" />
+            </label>
+          </div>
+          <label>
+            Path (bytes32)
+            <input id="withdraw-path" required type="text" spellcheck="false" placeholder="0x…" />
+          </label>
+          <label>
+            Targets (bytes)
+            <textarea id="withdraw-targets" required spellcheck="false" rows="2" placeholder="0x…"></textarea>
+          </label>
+          <label>
+            Blobs (one 0x… bytes value per line; blank means [])
+            <textarea id="withdraw-blobs" spellcheck="false" rows="3" placeholder="0x…"></textarea>
+          </label>
+          <label>
+            Proof (bytes)
+            <textarea id="withdraw-proof" required spellcheck="false" rows="4" placeholder="0x…"></textarea>
+          </label>
+          <button type="submit">Submit withdrawal</button>
+        </form>
+      </section>
+
+      <section class="card log-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ACTIVITY</p>
+            <h2>Transaction log</h2>
+          </div>
+          <button id="clear-log" class="secondary" type="button">Clear</button>
+        </div>
+        <ol id="activity-log" class="activity-log">
+          <li class="muted">No transactions yet.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer>
+      <span>Refuje console</span>
+      <a href="https://eips.ethereum.org/EIPS/eip-6963" target="_blank" rel="noreferrer">EIP-6963 wallet discovery</a>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
