@@ -2,6 +2,8 @@ export { RecipeClient } from "./client.ts";
 export { consentRequest, parsePluginPackage } from "./package.ts";
 export { normalizePlan, PlanValidationError, serializePlan, validatePlan } from "./plan.ts";
 export { evaluatePolicy, PolicyViolationError } from "./policy.ts";
+export { RefujeRecipeApi } from "./refuje.ts";
+export type { RefujeDirectRecipeInput, RefujeWithdrawalInput } from "./refuje.ts";
 export type { CallPolicy, ChainPolicy, PolicyConfig, PolicyIssue, PolicyResult } from "./policy.ts";
 export type { RecipeApproval, RecipeAsset, RecipeAssetFlow, RecipeCall, RecipeConstraints, RecipePlan } from "./plan.ts";
 export {

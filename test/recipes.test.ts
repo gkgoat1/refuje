@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { evaluatePolicy, normalizePlan, PolicyViolationError, RecipeClient, parsePluginPackage, serializePlan } from "../src/recipes/index.ts";
+import { evaluatePolicy, normalizePlan, PolicyViolationError, RecipeClient, RefujeRecipeApi, parsePluginPackage, serializePlan } from "../src/recipes/index.ts";
 import { ClientPluginStore, MemoryFileStorage, createMemoryKeyValueStorage } from "../src/recipes/store.ts";
 import type { RecipePluginPackage, WorkerLike, WorkerRequest } from "../src/recipes/types.ts";
 
@@ -116,6 +116,39 @@ test("headless plan rejects policy violations", async () => {
     client.plan(plugin.manifest.id, plan, { chains: [{ chainId: 1, targets: {} }] }),
     (error: unknown) => error instanceof PolicyViolationError && error.result.allowed === false,
   );
+});
+
+test("RefujeRecipeApi compiles native and ERC-20 withdrawals", () => {
+  const api = new RefujeRecipeApi();
+  const base = {
+    chainId: 1,
+    refujeAddress: "0x0000000000000000000000000000000000000001",
+    path: `0x${"11".repeat(32)}`,
+    targets: "0x12345678",
+    blobs: [] as string[],
+    proof: "0x1234",
+    asset: { kind: "native" as const },
+    flows: [{ direction: "input" as const, asset: { kind: "native" as const, chainId: 1 }, amount: "10" }],
+  };
+  const eth = api.withdrawal(base);
+  const erc20 = api.withdrawal({ ...base, asset: { kind: "erc20", token: "0x0000000000000000000000000000000000000002" }, flows: [{ direction: "input", asset: { kind: "erc20", chainId: 1, token: "0x0000000000000000000000000000000000000002" }, amount: "10" }] });
+  assert.match(eth.calls[0].calldata, /^0x[0-9a-f]+$/);
+  assert.match(erc20.calls[0].calldata, /^0x[0-9a-f]+$/);
+  assert.notEqual(eth.calls[0].calldata.slice(0, 10), erc20.calls[0].calldata.slice(0, 10));
+});
+
+test("RefujeRecipeApi rejects malformed proof material", () => {
+  const api = new RefujeRecipeApi();
+  assert.throws(() => api.withdrawal({
+    chainId: 1,
+    refujeAddress: "0x0000000000000000000000000000000000000001",
+    path: "0x00",
+    targets: "0x",
+    blobs: [],
+    proof: "0x",
+    asset: { kind: "native" },
+    flows: [],
+  }), /path must be bytes32/);
 });
 
 test("installation requires explicit consent", async () => {
