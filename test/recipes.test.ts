@@ -247,3 +247,23 @@ test("installation requires explicit consent", async () => {
   await assert.rejects(client.install(plugin), /requires explicit user consent/);
   await assert.rejects(client.install(plugin, { consent: () => false }), /installation declined/);
 });
+
+test("revoked plugins cannot run and revocation is logged", async () => {
+  const client = new RecipeClient({ workerFactory: { create: () => new FakeWorker() }, requestTimeoutMs: 500 });
+  await client.install(plugin, { lifetime: "temporary", consent: async () => true });
+  await client.revoke(plugin.manifest.id);
+  assert.equal(client.isRevoked(plugin.manifest.id), true);
+  await assert.rejects(client.run(plugin.manifest.id, { x: 1 }), /revoked/);
+  const entries = await client.logEntries();
+  assert.equal(entries.some((e) => e.event === "plugin.revoked" && e.pluginId === plugin.manifest.id), true);
+});
+
+test("observability redacts secret fields from logs", async () => {
+  const client = new RecipeClient({ workerFactory: { create: () => new FakeWorker() }, requestTimeoutMs: 500 });
+  await client.install(plugin, { lifetime: "temporary", consent: async () => true });
+  await client.run(plugin.manifest.id, { amount: 5 });
+  const entries = await client.logEntries();
+  const run = entries.find((e) => e.event === "plugin.run");
+  assert.ok(run);
+  assert.equal(JSON.stringify(run.data).includes("privateKey"), false);
+});

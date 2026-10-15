@@ -2,6 +2,7 @@ import { consentRequest, parsePluginPackage } from "./package.ts";
 import { normalizePlan, type RecipePlan } from "./plan.ts";
 import { evaluatePolicy, PolicyViolationError, type PolicyConfig, type PolicyResult } from "./policy.ts";
 import { MemoryPluginStore } from "./store.ts";
+import { logEntry, MemoryLogStore, type LogStore } from "./observability.ts";
 import type {
   PluginId,
   PluginInstallOptions,
@@ -29,6 +30,8 @@ export class RecipeClient {
   private readonly timeoutMs: number;
   private readonly states = new Map<PluginId, PluginState>();
   private readonly loaded = new Map<PluginId, LoadedPlugin>();
+  private readonly revoked = new Set<PluginId>();
+  private readonly logs: LogStore = new MemoryLogStore();
 
   constructor(options: RecipeClientOptions) {
     this.options = options;
@@ -98,6 +101,7 @@ export class RecipeClient {
   }
 
   async run(pluginId: PluginId, input: unknown): Promise<PluginRunResult> {
+    if (this.revoked.has(pluginId)) throw new Error(`Plugin is revoked: ${pluginId}`);
     const loaded = this.loaded.get(pluginId);
     if (!loaded) await this.load(pluginId);
     const active = this.loaded.get(pluginId);
@@ -115,6 +119,7 @@ export class RecipeClient {
     });
     active.state = { ...active.state, status: "loaded" };
     this.states.set(pluginId, active.state);
+    await this.logs.append(logEntry("plugin.run", { output }, { pluginId }));
     return { pluginId, version: active.state.version, output };
   }
 
@@ -148,6 +153,20 @@ export class RecipeClient {
     await this.unload(pluginId);
     await this.store.remove(pluginId);
     this.states.delete(pluginId);
+  }
+
+  async revoke(pluginId: PluginId): Promise<void> {
+    this.revoked.add(pluginId);
+    await this.unload(pluginId);
+    await this.logs.append(logEntry("plugin.revoked", {}, { pluginId }));
+  }
+
+  isRevoked(pluginId: PluginId): boolean {
+    return this.revoked.has(pluginId);
+  }
+
+  logEntries(correlationId?: string, executionId?: string) {
+    return this.logs.query(correlationId, executionId);
   }
 
   status(pluginId: PluginId): PluginState | undefined {
