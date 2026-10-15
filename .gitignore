@@ -13,6 +13,7 @@ out/
 
 # Docs
 docs/
+!docs/bridge-protocol-research.md
 
 # Dotenv file
 .env

@@ -291,7 +291,7 @@ It is not the execution boundary.
 
 ## 6. Remaining decisions
 
-1. Which bridge protocol should be the first adapter behind Relay?
+1. **Bridge protocol — resolved: Across.** Intent-based deposits are plain calldata a Refuje key can fund, status is plain HTTPS polling, expiry refunds map to the recoverable state, and USDC routes compose with CCTP as a second adapter. See `docs/bridge-protocol-research.md`.
 2. Which OPFS package layout should the first release standardize?
 3. Which Relay environments should the first integration support?
 
@@ -311,3 +311,4 @@ The implementation must confirm the package API and Web Worker compatibility bef
 - **2026-10-14** — Revised the plan for dynamic plugins in clean Web Workers.
 - **2026-10-14** — Resolved the scope: consented installation, separate balance and UTXO APIs, client-side proving, Relay submission, and client-owned state.
 - **2026-10-14** — Resolved local upload and OPFS storage, temporary or persistent consent, all Cookbook recipe ports, and the three headless client storage APIs.
+- **2026-10-14** — Selected Across as the first bridge adapter after protocol research; CCTP is the planned second adapter for USDC routes.
