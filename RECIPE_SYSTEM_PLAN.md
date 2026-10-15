@@ -1,8 +1,8 @@
 # Refuje recipe system
 
-**Status**: Proposed for review  
+**Status**: Approved decisions, implementation in progress  
 **Date**: 2026-10-14  
-**Version**: 0.2
+**Version**: 0.3
 
 ## Decision in one screen
 
@@ -279,21 +279,21 @@ It is not the execution boundary.
 
 1. **Worker lifecycle**: create one fresh dedicated Web Worker per plugin instance.
 2. **Plugin trust**: require explicit user consent for installation; do not require cryptographic verification.
-3. **Plugin format**: allow a dynamically loaded ESM dependency graph.
-4. **Proof boundary**: keep signing and proving client-side.
-5. **Execution authority**: use Relay for submission and status interaction.
-6. **Cookbook scope**: support RAILGUN as one system, and port useful recipes directly to Refuje where appropriate.
-7. **Accounting APIs**: keep RefujeRecipeApi and RailgunRecipeApi separate, with explicit integration adapters.
-8. **Persistence**: keep recipe and execution state client-owned.
-9. **UI boundary**: expose pluggable headless APIs that the web UI consumes but does not own.
+3. **Plugin format**: load a dynamic ESM dependency graph.
+4. **Plugin source**: accept local uploads and store installed packages in OPFS.
+5. **Consent lifetime**: support persistent consent and temporary installation without saved state.
+6. **Proof boundary**: keep signing and proving client-side.
+7. **Execution authority**: use Relay for submission and status interaction.
+8. **Cookbook scope**: port all Cookbook recipes directly to Refuje where possible; keep RAILGUN as one supported system and support key/shielded-fund movement.
+9. **Accounting APIs**: keep RefujeRecipeApi and RailgunRecipeApi separate, with explicit integration adapters.
+10. **Persistence**: keep recipe and execution state client-owned with localStorage and OPFS.
+11. **UI boundary**: expose pluggable headless APIs that the web UI consumes but does not own.
 
 ## 6. Remaining decisions
 
 1. Which bridge protocol should be the first adapter behind Relay?
-2. Where should plugin manifests and module graphs be hosted?
-3. Should consent survive browser restart, or require confirmation per session?
-4. Which client storage adapter should hold resumable execution state?
-5. Which direct Refuje recipe should be the first port from the Cookbook catalog?
+2. Which OPFS package layout should the first release standardize?
+3. Which Relay environments should the first integration support?
 
 ## 7. External references
 
@@ -310,3 +310,4 @@ The implementation must confirm the package API and Web Worker compatibility bef
 - **2026-10-14** — Created the initial review plan for Worker plugins, Refuje key recipes, cross-chain execution, and RAILGUN Cookbook integration.
 - **2026-10-14** — Revised the plan for dynamic plugins in clean Web Workers.
 - **2026-10-14** — Resolved the scope: consented installation, separate balance and UTXO APIs, client-side proving, Relay submission, and client-owned state.
+- **2026-10-14** — Resolved local upload and OPFS storage, temporary or persistent consent, all Cookbook recipe ports, and the three headless client storage APIs.
